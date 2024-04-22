@@ -1,4 +1,4 @@
-# Lamport Mutual Exclusion for Distributed File Access
+# Lamport Mutual Exclusion
 
 This project implements the Lamport mutual exclusion algorithm. The system allows multiple clients to perform read and write operations on files hosted by a central server while ensuring mutual exclusion and synchronization among them.
 

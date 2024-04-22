@@ -46,10 +46,11 @@ Step 3: Compile and run Client.java on all client machines using below commands 
    ```
    java Client <Node_Number>	
    ```
+Node_Numbers: 1 for Client1, 2 for Client2, 3 for Client3 <br />
    
 Step 4: Each of the 3 clients performs 5 random Read/Write operations and prints the output 
 
 ## Submitted by
-Pooner Sumith 20CS01053
-Mothukuri Likhitha 20CS02005
+Pooner Sumith 20CS01053 <br />
+Mothukuri Likhitha 20CS02005 <br />
 Katkam Raja Vishwa Teja 20CS01042

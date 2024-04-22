@@ -3,48 +3,57 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 public class Server {
-    private int port = 5555;
+    private int ports[] = new int [] {56391,56392,56393};
     private ServerSocket server;
     private Socket client;
 
-    public Server() throws IOException {
+    public Server(String node) throws IOException{
         try {
-            server = new ServerSocket(port);
+            server = new ServerSocket(ports[Integer.valueOf(node)-1]);
 
-            while (true) {
+            while(true){
                 client = server.accept();
 
-                DataInputStream dis = new DataInputStream(client.getInputStream());
-                DataOutputStream dout = new DataOutputStream(client.getOutputStream());
+                DataInputStream dataInStream = new DataInputStream(client.getInputStream());
+                DataOutputStream dataOutStream=new DataOutputStream(client.getOutputStream());
 
-                Thread t = new ClientHandler(client, dis, dout);
+                Thread t = new clientController(client, dataInStream, dataOutStream, node);
 
                 t.start();
+
             }
-        } catch (Exception e) {
+
+        }catch (Exception e){
             client.close();
-            System.out.println("Exception occurred in Server: " + e);
+            System.out.println("Found an exception in Server: " + e);
+        }
+
+    }
+
+    public static void main(String[] args) throws IOException{
+        if(args.length < 1){
+            System.out.println("Provide the server number (1 to 3)");
+        }else{
+            new Server(args[0]);
         }
     }
 
-    public static void main(String[] args) throws IOException {
-        new Server(); // No need for arguments
-    }
 }
 
-
-
-class ClientHandler extends Thread {
-    final DataInputStream dis;
-    final DataOutputStream dout;
+class clientController extends Thread {
+    final DataInputStream dataInStream;
+    final DataOutputStream dataOutStream;
     final Socket s;
     private String filePath;
+    private String node;
 
-    public ClientHandler(Socket s, DataInputStream dis, DataOutputStream dout) {
+    public clientController(Socket s, DataInputStream dataInStream, DataOutputStream dataOutStream, String node) {
         this.s = s;
-        this.dis = dis;
-        this.dout = dout;
-        this.filePath = "C:\\Users\\SUMITH\\Desktop\\java\\LamportsMutualExclusionAlgorithm-master\\files"; // Replace with actual file path
+        this.dataInStream = dataInStream;
+        this.dataOutStream = dataOutStream;
+        this.node = node;
+        this.filePath = "C:\\Users\\SUMITH\\Desktop\\java\\lamport\\files";
+
     }
 
     @Override
@@ -53,33 +62,33 @@ class ClientHandler extends Thread {
         String toSend = "";
 
         try {
-            received = (String) dis.readUTF();
+            received = (String) dataInStream.readUTF();
             while (received != null && received.length() != 0) {
-                String msgs[] = received.split(",");
+                String messages[] = received.split(",");
                 System.out.println("Request received: " + received);
 
-                if (msgs[0].equals("enquire")) {
+                if (messages[0].equals("enquire")) {
                     toSend = enquire();
-                } else if (msgs[0].equals("read")) {
-                    toSend = read(msgs[1]);
-                } else if (msgs[0].equals("write")) {
-                    toSend = write(msgs[1], msgs[2] + msgs[3]);
+                } else if (messages[0].equals("read")) {
+                    toSend = read(messages[1]);
+                } else if (messages[0].equals("write")) {
+                    toSend = write(messages[1], messages[2] + messages[3]);
                 }
-                dout.writeUTF(toSend);
-                dout.flush();
+                dataOutStream.writeUTF(toSend);
+                dataOutStream.flush();
 
-                if(dis.available()>0){
-                    received = (String) dis.readUTF();
+                if(dataInStream.available()>0){
+                    received = (String) dataInStream.readUTF();
                 }else {
                     received = null;
                 }
             }
 
-            dout.close();
-            dis.close();
+            dataOutStream.close();
+            dataInStream.close();
 
         }catch (Exception e){
-            System.out.println("Exception occurred in ClientHandler: "+ e);
+            System.out.println("Found an exception in clientController: "+ e);
         }
     }
 
@@ -99,7 +108,7 @@ class ClientHandler extends Thread {
 
             return filesList;
         }catch (Exception e){
-            System.out.println("Exception occurred in enquire: "+ e);
+            System.out.println("Found an exception in enquire: "+ e);
             return null;
         }
     }
@@ -112,19 +121,19 @@ class ClientHandler extends Thread {
             BufferedReader br = new BufferedReader(new FileReader(file));
 
             String st = "";
-            String lastLine = "";
+            String endLine = "";
             while ((st = br.readLine()) != null){
-                lastLine = st;
+                endLine = st;
             }
 
-            if(lastLine.equals("")){
-                lastLine = filename+ " is empty";
+            if(endLine.equals("")){
+                endLine = filename+ " is empty";
             }
 
-            return lastLine;
+            return endLine;
         }catch(Exception e){
-            System.out.println("Exception occurred in enquire: "+e);
-            return "Error in reading from " + filename;
+            System.out.println("Found an exception in enquire: "+e);
+            return "Error in reading from " + filename + " in Server"+node;
         }
     }
 
@@ -138,11 +147,12 @@ class ClientHandler extends Thread {
             bw.close();
             fw.close();
 
-            return "Successfully written to "+ filename;
+            return "Successfully written to "+ filename + " in Server"+node;
 
         } catch (IOException e) {
-            System.out.println("Exception occurred in wrie: "+e);
-            return "Error in writing to " + filename;
+            System.out.println("Found an exception in wrie: "+e);
+            return "Error in writing to " + filename + " in Server"+node;
         }
     }
+
 }

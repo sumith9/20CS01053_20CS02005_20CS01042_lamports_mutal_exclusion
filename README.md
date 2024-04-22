@@ -36,8 +36,9 @@ Step 2: Compile and run Server.java on server machine using below commands <br /
    javac Server.java 	
    ```
    ```
-   java Server
+   java Server <Node_Number>	
    ```
+Node_Numbers: 1 for Client1, 2 for Client2, 3 for Client3 <br />
    
 Step 3: Compile and run Client.java on all client machines using below commands <br />
    ```
@@ -49,6 +50,13 @@ Step 3: Compile and run Client.java on all client machines using below commands 
 Node_Numbers: 1 for Client1, 2 for Client2, 3 for Client3 <br />
    
 Step 4: Each of the 3 clients performs 5 random Read/Write operations and prints the output 
+
+## Output
+screen shots of terminal are uploaded in output folder
+
+## Note
+before running make sure you have updated the filepath in server.java where the files are stored 
+
 
 ## Submitted by
 Pooner Sumith 20CS01053 <br />

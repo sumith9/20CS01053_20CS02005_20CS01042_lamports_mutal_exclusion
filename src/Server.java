@@ -3,7 +3,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 public class Server {
-    private int ports[] = new int [] {56391,56392,56393};
+    private int ports[] = new int [] {3333,4444,5555};
     private ServerSocket server;
     private Socket client;
 

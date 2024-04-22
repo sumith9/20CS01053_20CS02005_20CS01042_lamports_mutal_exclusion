@@ -38,7 +38,7 @@ Step 2: Compile and run Server.java on server machine using below commands <br /
    ```
    java Server <Node_Number>	
    ```
-Node_Numbers: 1 for Client1, 2 for Client2, 3 for Client3 <br />
+Node_Numbers: 1 for Server1, 2 for Server2, 3 for Server3 <br />
    
 Step 3: Compile and run Client.java on all client machines using below commands <br />
    ```

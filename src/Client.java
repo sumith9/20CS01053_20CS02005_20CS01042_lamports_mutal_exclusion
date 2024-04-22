@@ -9,7 +9,7 @@ import java.util.*;
 public class Client {
 
     // server ports, addresses, sockets to connect to each server
-    private int server_ports[] = new int [] {56391,56392,56393};
+    private int server_ports[] = new int [] {3333,4444,5555};
 
     private String servers[] = new String []{
             "10.10.13.104",
@@ -20,7 +20,7 @@ public class Client {
 
 
     // client ports, addresses, sockets to connect to every other client
-    private int client_ports[] = new int [] {56394,56395,56396};
+    private int client_ports[] = new int [] {6666,7777,8888};
     private String clients[] = new String []{
             "10.10.13.104",
             "10.10.13.104",

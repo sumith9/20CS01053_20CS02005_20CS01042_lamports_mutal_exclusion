@@ -7,13 +7,20 @@ import java.sql.Timestamp;
 import java.util.*;
 
 public class Client {
-    private String server_address = "10.10.13.104"; // Replace with actual server address
-    private int server_port = 5555;
+
+    // server ports, addresses, sockets to connect to each server
+    private int server_ports[] = new int [] {56391,56392,56393};
+
+    private String servers[] = new String []{
+            "10.10.13.104",
+            "10.10.13.104",
+            "10.10.13.104"
+    };
     private Socket client;
 
 
     // client ports, addresses, sockets to connect to every other client
-    private int client_ports[] = new int [] {6666,7777,8888};
+    private int client_ports[] = new int [] {56394,56395,56396};
     private String clients[] = new String []{
             "10.10.13.104",
             "10.10.13.104",
@@ -23,10 +30,10 @@ public class Client {
     private DataOutputStream[] douts;
     private DataInputStream[] diss;
 
-    // file names, queue for each file, replies collected for each file
+    // file names, queue for each file, responses collected for each file
     private String[] files;
-    private PriorityQueue<NodeEntry>[] fileQueues;
-    private int[] replies;
+    private PriorityQueue<entryOfNode>[] queueOfFiles;
+    private int[] responses;
 
     // client number
     private int node;
@@ -38,15 +45,15 @@ public class Client {
             douts = new DataOutputStream[3];
             diss = new DataInputStream[3];
 
-            Thread t = new ClientasServer(this, client_ports[this.node-1]);
+            Thread t = new ClientServer(this, client_ports[this.node-1]);
             t.start();
 
             enquire();
-            connectClients();
-            doRandomeReadandWrites();
+            clientConnection();
+            randomRandW();
 
         }catch (Exception e){
-            System.out.println("Exception occurred in Client: " + e);
+            System.out.println("Found an exception in Client: " + e);
         }
     }
 
@@ -54,40 +61,42 @@ public class Client {
     // enquire returns list of all files in the server
     public void enquire(){
         try {
-            client = new Socket(server_address, server_port);
+            Random random = new Random();
+            int randomNode = random.nextInt(3);
+            client = new Socket(servers[randomNode],server_ports[randomNode]);
 
-            DataOutputStream dout=new DataOutputStream(client.getOutputStream());
-            DataInputStream dis = new DataInputStream(client.getInputStream());
+            DataOutputStream dataOutStream=new DataOutputStream(client.getOutputStream());
+            DataInputStream dataInStream = new DataInputStream(client.getInputStream());
 
-            dout.writeUTF("enquire");
-            dout.flush();
+            dataOutStream.writeUTF("enquire");
+            dataOutStream.flush();
 
-            String	filesList = (String)dis.readUTF();
+            String	listOfFiles = (String)dataInStream.readUTF();
 
-            System.out.println("List of files in the server:");
-            System.out.println(filesList);
+            System.out.println("Files in the server are:");
+            System.out.println(listOfFiles);
 
-            // loading files and initializing file queues and replies
-            files = filesList.split(",");
+            // loading files and initializing file queues and responses
+            files = listOfFiles.split(",");
 
-            fileQueues = new PriorityQueue[files.length];
+            queueOfFiles = new PriorityQueue[files.length];
             for(int i=0; i < files.length; i++){
-                fileQueues[i] =  new PriorityQueue<NodeEntry>();
+                queueOfFiles[i] =  new PriorityQueue<entryOfNode>();
             }
 
-            replies = new int[files.length];
-            Arrays.fill(replies, 0);
+            responses = new int[files.length];
+            Arrays.fill(responses, 0);
 
-            dis.close();
-            dout.close();
+            dataInStream.close();
+            dataOutStream.close();
             client.close();
         }catch (Exception e){
-            System.out.println("Exception occurred in enquire: "+ e);
+            System.out.println("Found an exception in enquire: "+ e);
         }
     }
 
     // connecting to all the clients except itself
-    public void connectClients() throws Exception{
+    public void clientConnection() throws Exception{
         for(int i = 0; i < 3 ; i++) {
             if(i!=(node-1)){
                 while (true){
@@ -102,7 +111,7 @@ public class Client {
                         }
 
                     }catch (IOException e){
-                       Thread.sleep(1000);
+                        Thread.sleep(1000);
                     }
 
                 }
@@ -112,7 +121,7 @@ public class Client {
 
 
     // generates random Read/Write requests
-    public void doRandomeReadandWrites(){
+    public void randomRandW(){
         try {
             Random random = new Random();
             String operation = "Read";
@@ -124,13 +133,13 @@ public class Client {
                     operation = "Write";
 
                 System.out.println("Requesting file '"+ files[rand2] + "' for "+ operation + " operation");
-                sendRequestToClients(rand2);
+                requestingClients(rand2);
 
-                // waiting till it is at the peak of the respective file queue
+                // waiting till it is at the top of the respective file queue
                 boolean waiting = true;
                 while(waiting){
-                    int peak = fileQueues[rand2].peek().getNode();
-                    if(peak==node && replies[rand2]==2){
+                    int top = queueOfFiles[rand2].peek().obtainNode();
+                    if(top==node && responses[rand2]==2){
                         if(rand1 == 0){    // read
                             try{
                                 read(files[rand2]);
@@ -144,33 +153,31 @@ public class Client {
                                 System.out.println(e);
                             }
                         }
-                        replies[rand2]=0;
+                        responses[rand2]=0;
                         waiting = false;
                     }else {
                         Thread.sleep(1000);
                     }
                 }
 
-                System.out.println("Releasing file: "+ files[rand2]);
-                sendReleaseMsgs(rand2);
+                System.out.println(files[rand2] + " is being released");
+                releaseMessage(rand2);
             }
 
-            System.out.println("Successfully performed 10 Read/Write requests!!!");
+            System.out.println("Successfully performed 5 Read/Write requests!!!");
         }catch (Exception e){
-            System.out.println("Exception occurred doRandomeReadandWrites: "+ e);
+            System.out.println("Found an exception in randomRandW: "+ e);
         }
 
     }
 
     // sending request to all clients for a file
-    public void sendRequestToClients(int fileno){
+    public void requestingClients(int fileno){
         Long seconds = System.currentTimeMillis();
-        //System.out.println("vgvgvgvg ");
-        fileQueues[fileno].add(new NodeEntry(node, new Timestamp(seconds)));
+        queueOfFiles[fileno].add(new entryOfNode(node, new Timestamp(seconds)));
         try {
             for(int i = 0; i < 3 ; i++) {
                 if(i!=(node-1)) {
-                    //System.out.println("vgvgvgvg ");
                     douts[i].writeUTF("request," + fileno + "," + node+","+seconds);
                     douts[i].flush();
 
@@ -178,18 +185,18 @@ public class Client {
                     String msgs[] = reply.split(",");
 
                     if (msgs[0].equals("reply"))
-                        replies[Integer.valueOf(msgs[1])] += 1;
+                        responses[Integer.valueOf(msgs[1])] += 1;
                 }
             }
 
         }catch (Exception e){
-            System.out.println("Exception occurred in sendRequestToClients: "+e);
+            System.out.println("Found an exception in requestingClients: "+e);
         }
     }
 
     // sending release of a file to all clients
-    public void sendReleaseMsgs(int fileno){
-        fileQueues[fileno].poll();
+    public void releaseMessage(int fileno){
+        queueOfFiles[fileno].poll();
         try {
             for(int i = 0; i < 3 ; i++) {
                 if(i!=(node-1)) {
@@ -198,72 +205,76 @@ public class Client {
                 }
             }
         }catch (Exception e){
-            System.out.println("Exception occurred in sendReleaseMsgs: "+e);
+            System.out.println("Found an exception in releaseMessage: "+e);
         }
     }
 
     public void read(String filename) throws Exception{
-      try{
-          client = new Socket(server_address, server_port);
+        try{
+            Random random = new Random();
+            int randomNode = random.nextInt(3);
+            client = new Socket(servers[randomNode],server_ports[randomNode]);
 
-          DataOutputStream dout=new DataOutputStream(client.getOutputStream());
-          DataInputStream dis = new DataInputStream(client.getInputStream());
+            DataOutputStream dataOutStream=new DataOutputStream(client.getOutputStream());
+            DataInputStream dataInStream = new DataInputStream(client.getInputStream());
 
-          dout.writeUTF("read,"+filename);
-          dout.flush();
+            dataOutStream.writeUTF("read,"+filename);
+            dataOutStream.flush();
 
-          String	msg = (String)dis.readUTF();
-          System.out.println("Output: "+msg);
+            String	message = (String)dataInStream.readUTF();
+            System.out.println("Output: "+message);
 
-          dis.close();
-          dout.close();
-          client.close();
-      }catch (Exception e){
-          System.out.println("Exception occurred in read: "+e);
-      }
+            dataInStream.close();
+            dataOutStream.close();
+            client.close();
+        }catch (Exception e){
+            System.out.println("Found an exception in read: "+e);
+        }
     }
 
     public void write(String filename){
         try{
             Timestamp timestamp =  new Timestamp(System.currentTimeMillis());
             String content = "Client "+node + ", " + timestamp.toString();
-            client = new Socket(server_address, server_port); // Connect to the single server
 
-            DataOutputStream dout = new DataOutputStream(client.getOutputStream());
-            DataInputStream dis = new DataInputStream(client.getInputStream());
+            for(int j = 0; j < 3 ; j++){
+                client = new Socket(servers[j],server_ports[j]);
+                DataOutputStream dataOutStream=new DataOutputStream(client.getOutputStream());
+                DataInputStream dataInStream = new DataInputStream(client.getInputStream());
+                dataOutStream.writeUTF("write,"+filename+","+content);
+                dataOutStream.flush();
 
-            dout.writeUTF("write," + filename + "," + content);
-            dout.flush();
+                String	message = (String)dataInStream.readUTF();
+                System.out.println(message);
 
-            String msg = (String) dis.readUTF();
-            System.out.println(msg);
-
-            dis.close();
-            dout.close();
-            client.close();
+                dataInStream.close();
+                dataOutStream.close();
+                client.close();
+            }
         }catch (Exception e){
-            System.out.println("Exception occurred in write: "+e);
+            System.out.println("Found an exception in write: "+e);
         }
     }
 
-    public PriorityQueue<NodeEntry>[] getFileQueues() {
-        return fileQueues;
+    public PriorityQueue<entryOfNode>[] fetchFileQueue() {
+        return queueOfFiles;
     }
 
     public static void main(String[] args) {
         if(args.length < 1){
-            System.out.println("Please provide the client number (1 to 3)");
+            System.out.println("Provide the client number (1 to 5)");
         }else{
             new Client(args[0]);
         }
     }
 }
 
-class ClientasServer extends Thread {
+//Client as a Server
+class ClientServer extends Thread {
     private ServerSocket client_as_server;
     private Client client;
 
-    public ClientasServer(Client client, int port) throws Exception{
+    public ClientServer(Client client, int port) throws Exception{
         client_as_server = new ServerSocket(port);
         this.client = client;
     }
@@ -272,30 +283,30 @@ class ClientasServer extends Thread {
     public void run() {
         try {
             while(true){
-                Socket  co_client = client_as_server.accept();
+                Socket  coClient = client_as_server.accept();
 
-                DataInputStream dis = new DataInputStream(co_client.getInputStream());
-                DataOutputStream dout=new DataOutputStream(co_client.getOutputStream());
+                DataInputStream dataInStream = new DataInputStream(coClient.getInputStream());
+                DataOutputStream dataOutStream=new DataOutputStream(coClient.getOutputStream());
 
-                Thread t = new CoClientHandler(co_client, dis, dout, client);
+                Thread t = new coClientController(coClient, dataInStream, dataOutStream, client);
                 t.start();
             }
         }catch (Exception e){
-            System.out.println("Exception occurred in ClientasServer: "+ e);
+            System.out.println("Found an exception in ClientServer: "+ e);
         }
     }
 }
 
-class CoClientHandler extends Thread {
-    final DataInputStream dis;
-    final DataOutputStream dout;
-    final Socket co_client;
+class coClientController extends Thread {
+    final DataInputStream dataInStream;
+    final DataOutputStream dataOutStream;
+    final Socket coClient;
     private Client client;
 
-    public CoClientHandler(Socket co_client, DataInputStream dis, DataOutputStream dout, Client client) {
-        this.co_client = co_client;
-        this.dis = dis;
-        this.dout = dout;
+    public coClientController(Socket coClient, DataInputStream dataInStream, DataOutputStream dataOutStream, Client client) {
+        this.coClient = coClient;
+        this.dataInStream = dataInStream;
+        this.dataOutStream = dataOutStream;
         this.client = client;
     }
 
@@ -305,47 +316,47 @@ class CoClientHandler extends Thread {
 
         try {
             while (true){
-                if(dis.available()>0){
-                    received = (String) dis.readUTF();
+                if(dataInStream.available()>0){
+                    received = (String) dataInStream.readUTF();
                     System.out.println("recived "+received);
                     String msgs[] = received.split(",");
 
                     int fileno = Integer.valueOf(msgs[1]);
-                    if (msgs[0].equals("request")){             // if received msg is request the client adds the node entry to its own queue and sends a reply
-                        client.getFileQueues()[fileno].add(new NodeEntry(Integer.valueOf(msgs[2]), new Timestamp(Long.valueOf(msgs[3]))));
-                        dout.writeUTF("reply,"+fileno);
-                        dout.flush();
-                    }else if (msgs[0].equals("release")){       // if received msg is release the client removes the node entry from its own queue
-                        client.getFileQueues()[fileno].poll();
+                    if (msgs[0].equals("request")){             // if received message is request the client adds the node entry to its own queue and sends a reply
+                        client.fetchFileQueue()[fileno].add(new entryOfNode(Integer.valueOf(msgs[2]), new Timestamp(Long.valueOf(msgs[3]))));
+                        dataOutStream.writeUTF("reply,"+fileno);
+                        dataOutStream.flush();
+                    }else if (msgs[0].equals("release")){       // if received message is release the client removes the node entry from its own queue
+                        client.fetchFileQueue()[fileno].poll();
                     }
                 }
             }
 
         }catch (Exception e){
-            System.out.println("Exception occurred in CoClientHandler: "+ e);
+            System.out.println("Found an exception in coClientController: "+ e);
         }
     }
 }
 
-class NodeEntry implements Comparable<NodeEntry>{
+class entryOfNode implements Comparable<entryOfNode>{
     private Integer node;
     private Timestamp timestamp;
 
-    public NodeEntry( Integer node, Timestamp timestamp){
+    public entryOfNode( Integer node, Timestamp timestamp){
         this.node = node;
         this.timestamp = timestamp;
     }
 
-    public Integer getNode() {
+    public Integer obtainNode() {
         return node;
     }
 
-    public Timestamp getTimestamp() {
+    public Timestamp obtainTimestamp() {
         return timestamp;
     }
 
     @Override
-    public int compareTo(NodeEntry other) {
-        return this.getTimestamp().compareTo(other.getTimestamp());
+    public int compareTo(entryOfNode other) {
+        return this.obtainTimestamp().compareTo(other.obtainTimestamp());
     }
 }
